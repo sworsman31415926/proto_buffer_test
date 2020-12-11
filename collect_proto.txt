@@ -1,0 +1,644 @@
+https://github.com/lytsing/protobuf-demo
+...............................
+protobuf的基本使用示例
+1、编写msgtype文件
+test.proto
+
+syntax = "proto3";
+package msgType;
+
+enum EnumTest
+{
+	TEST0 = 0x00;
+	TEST1 = 0x01;
+	TEST2 = 0x02;
+	TEST3 = 0x03;
+}
+
+message ProtoTestSub
+{
+	int32 test1 = 1;
+	string test2 = 2;
+}
+
+message ProtoTest
+{
+	int32 int32_test = 1;
+	string str_test = 2;
+	repeated double dou_test = 3;
+	repeated ProtoTestSub sub_test = 4;
+	EnumTest eunm_test = 5;
+	bytes bytes_test = 6;
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+2、生成对应的头文件以及源文件
+root@root:/root/protobuf# protoc --cpp_out=./ ./test.proto.proto
+root@root:/root/protobuf# ls
+a.out  include  mybuild  protobuf_main.cpp  test.pb.cc  test.pb.h  test.proto
+1
+2
+3
+生成对应的*.pb.cc *.pb.h 文件 只需将这两个文件加到自己的工程目录中去
+
+3、示例程序
+protobuf_main.cpp
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include "test.pb.h"
+
+void MyPrint(unsigned char temp)
+{
+     printf("%02x ",(temp)&0xFF);
+}
+
+int main(void )
+{
+	//1、序列化  protobuf的基本使用
+	msgType:: ProtoTest cls_proto_test1;
+    cls_proto_test1.set_int32_test(123);
+    cls_proto_test1.set_str_test("FlyInCoding");
+    //多个 repeated使用
+    cls_proto_test1.add_dou_test(56.023);
+    cls_proto_test1.add_dou_test(78.023);
+    //嵌套类的使用
+    msgType:: ProtoTestSub * pcls_temp = cls_proto_test1.add_sub_test();
+    pcls_temp->set_test1(12);
+    pcls_temp->set_test2("zxcvbnm");
+    pcls_temp = cls_proto_test1.add_sub_test();
+    pcls_temp->set_test1(34);
+    pcls_temp->set_test2("asdfghjkl");
+    cls_proto_test1.set_eunm_test(msgType::TEST0);
+    //protobuf调试打印函数 打印成字符串
+    cls_proto_test1.PrintDebugString();
+    //序列化之后的大小
+    int ilen = cls_proto_test1.ByteSize();
+    //序列化成数组
+    std::vector <unsigned char> vec_test1;
+    vec_test1.resize(ilen);
+    cls_proto_test1.SerializePartialToArray(vec_test1.data(),ilen);
+    printf("cls_proto_test1 len is %d\n",ilen);
+    //容器类遍历的通用办法
+    printf("**************************************************\n");
+    std::for_each(vec_test1.begin(),vec_test1.end(),MyPrint);
+    printf("**************************************************\n");
+    //序列化成字符串
+    std::string str_temp;
+    cls_proto_test1.SerializeToString(&str_temp);
+    printf("**************************************************\n");
+    std::for_each(str_temp.begin(),str_temp.end(),MyPrint);
+    printf("**************************************************\n");
+    /*********************************************************
+        protobuf有个问题 如果里面数据都为整型 且都为0时 序列化之后的数据大小也为0
+        整型为0的数据 不计入整个序列化的数据长度
+        doubule float 空的字符串则没有此规律
+    **********************************************************/
+    msgType:: ProtoTest cls_proto_test2;
+    cls_proto_test2.set_int32_test(0);
+    //cls_proto_test2.set_str_test("");
+    //cls_proto_test2.add_dou_test(0);
+    //cls_proto_test2.add_dou_test(0);
+    //msgType:: ProtoTestSub * pcls_temp2 = cls_proto_test2.add_sub_test();
+    //pcls_temp2->set_test1(0);
+    //pcls_temp2->set_test2("");
+    //pcls_temp2 = cls_proto_test2.add_sub_test();
+   // pcls_temp2->set_test1(0);
+    //pcls_temp2->set_test2("");
+    //cls_proto_test2.set_eunm_test(msgType::TEST0);
+    //protobuf调试打印函数 打印成字符串
+    cls_proto_test2.PrintDebugString();
+    int ilen2 = cls_proto_test2.ByteSize();
+    printf("cls_proto_test1 ilen2 is %d\n",ilen2);
+    // 反序列化 从数组进行反序列化 
+    msgType::ProtoTest cls_proto_test3;
+    cls_proto_test3.ParseFromArray(vec_test1.data(),vec_test1.size());
+    cls_proto_test3.PrintDebugString();
+    printf("int32_test %d \n",cls_proto_test3.int32_test());
+    printf("eunm_test %d \n",cls_proto_test3.eunm_test());
+    printf("double count  %d \n",cls_proto_test3.dou_test_size());
+    printf("double0   %f \n",cls_proto_test3.dou_test(0));
+    printf("double1   %f \n",cls_proto_test3.dou_test(1));
+    msgType:: ProtoTestSub cls_temp ;
+    for(int i = 0;i < cls_proto_test3.sub_test_size();i++)
+    {
+        cls_temp = cls_proto_test3.sub_test(i);
+        cls_temp.PrintDebugString();
+    }
+
+
+	return 0;
+}
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+4、编译及运行
+root@root:/root/protobuf# g++ protobuf_main.cpp test.pb.cc -lprotobuf
+root@root:/root/protobuf# ./a.out 
+int32_test: 123
+str_test: "FlyInCoding"
+dou_test: 56.023
+dou_test: 78.023
+sub_test {
+  test1: 12
+  test2: "zxcvbnm"
+}
+sub_test {
+  test1: 34
+  test2: "asdfghjkl"
+}
+cls_proto_test1 len is 61
+**************************************************
+08 7b 12 0b 77 61 6e 78 75 65 78 69 61 6e 67 1a 10 6d e7 fb a9 f1 02 4c 40 b6 f3 fd d4 78 81 53 40 22 0b 08 0c 12 07 7a 78 63 76 62 6e 6d 22 0d 08 22 12 09 61 73 64 66 67 68 6a 6b 6c **************************************************
+**************************************************
+08 7b 12 0b 77 61 6e 78 75 65 78 69 61 6e 67 1a 10 6d e7 fb a9 f1 02 4c 40 b6 f3 fd d4 78 81 53 40 22 0b 08 0c 12 07 7a 78 63 76 62 6e 6d 22 0d 08 22 12 09 61 73 64 66 67 68 6a 6b 6c **************************************************
+cls_proto_test1 ilen2 is 0
+int32_test: 123
+str_test: "FlyInCoding"
+dou_test: 56.023
+dou_test: 78.023
+sub_test {
+  test1: 12
+  test2: "zxcvbnm"
+}
+sub_test {
+  test1: 34
+  test2: "asdfghjkl"
+}
+int32_test 123 
+eunm_test 0 
+double count  2 
+double0   56.023000 
+double1   78.023000 
+test1: 12
+test2: "zxcvbnm"
+test1: 34
+test2: "asdfghjkl"
+root@root:/root/protobuf# 
+
+
+。。。。。。。。。。。。。。。。。。。。。
+google protobuf安装与使用
+　　google protobuf是一个灵活的、高效的用于序列化数据的协议。相比较XML和JSON格式，protobuf更小、更快、更便捷。google protobuf是跨语言的，并且自带了一个编译器(protoc)，只需要用它进行编译，可以编译成Java、python、C++、C#、Go等代码，然后就可以直接使用，不需要再写其他代码，自带有解析的代码。更详细的介绍见: Protocol Buffers
+
+protobuf安装
+1、下载protobuf代码 google/protobuf
+
+2、安装protobuf
+
+　　tar -xvf protobuf
+
+　　cd protobuf
+
+　　./configure --prefix=/usr/local/protobuf
+
+　　make
+
+　　make check
+
+　　make install
+
+至此安装完成^_^，下面是配置：
+
+(1) vim /etc/profile，添加
+
+　　export PATH=$PATH:/usr/local/protobuf/bin/
+　　export PKG_CONFIG_PATH=/usr/local/protobuf/lib/pkgconfig/
+　　保存执行，source /etc/profile。同时在~/.profile中添加上面两行代码，否则会出现登录用户找不到protoc命令。
+(2) 配置动态链接库
+　　vim /etc/ld.so.conf，在文件中添加/usr/local/protobuf/lib（注意: 在新行处添加），然后执行命令: ldconfig
+ .proto文件
+　　.proto文件是protobuf一个重要的文件，它定义了需要序列化数据的结构。使用protobuf的3个步骤是：
+
+1 在.proto文件中定义消息格式
+
+2 用protobuf编译器编译.proto文件
+
+3 用C++/Java等对应的protobuf API来写或者读消息
+
+程序示例(C++版)
+　　该程序示例的大致功能是，定义一个Persion结构体和存放Persion的AddressBook，然后一个写程序向一个文件写入该结构体信息，另一个程序从文件中读出该信息并打印到输出中。
+
+1 address.proto文件
+
+复制代码
+package tutorial;
+
+message Persion {
+    required string name = 1;
+    required int32 age = 2;
+}
+
+message AddressBook {
+    repeated Persion persion = 1;
+}
+复制代码
+　　编译.proto文件，执行命令: protoc -I=$SRC_DIR --cpp_out=$DST_DIR $SRC_DIR/addressbook.proto，示例中执行命令protoc --cpp_out=/tmp addressbook.proto ，会在/tmp中生成文件addressbook.pb.h和addressbook.pb.cc。
+
+2 write.cpp文件，向文件中写入AddressBook信息，该文件是二进制的
+
+复制代码
+ 1 #include <iostream>
+ 2 #include <fstream>
+ 3 #include <string>
+ 4 #include "addressbook.pb.h"
+ 5 
+ 6 using namespace std;
+ 7 
+ 8 void PromptForAddress(tutorial::Persion *persion) {
+ 9     cout << "Enter persion name:" << endl;
+10     string name;
+11     cin >> name;
+12     persion->set_name(name);
+13 
+14     int age;
+15     cin >> age;
+16     persion->set_age(age);
+17 }
+18 
+19 int main(int argc, char **argv) {
+20     //GOOGLE_PROTOBUF_VERIFY_VERSION;
+21 
+22     if (argc != 2) {
+23         cerr << "Usage: " << argv[0] << " ADDRESS_BOOL_FILE" << endl;
+24         return -1;
+25     }
+26 
+27     tutorial::AddressBook address_book;
+28 
+29     {
+30         fstream input(argv[1], ios::in | ios::binary);
+31         if (!input) {
+32             cout << argv[1] << ": File not found. Creating a new file." << endl;
+33         }
+34         else if (!address_book.ParseFromIstream(&input)) {
+35             cerr << "Filed to parse address book." << endl;
+36             return -1;
+37         }
+38     }
+39 
+40     // Add an address
+41     PromptForAddress(address_book.add_persion());
+42 
+43     {
+44         fstream output(argv[1], ios::out | ios::trunc | ios::binary);
+45         if (!address_book.SerializeToOstream(&output)) {
+46             cerr << "Failed to write address book." << endl;
+47             return -1;
+48         }
+49     }
+50 
+51     // Optional: Delete all global objects allocated by libprotobuf.
+52     //google::protobuf::ShutdownProtobufLibrary();
+53 
+54     return 0;
+55 }
+
+复制代码
+　　编译write.cpp文件，g++ addressbook.pb.cc write.cpp -o write `pkg-config --cflags --libs protobuf` (注意，这里的`符号在键盘数字1键左边，也就是和~是同一个按键)。
+
+3 read.cpp文件，从文件中读出AddressBook信息并打印
+
+复制代码
+ 1 #include <iostream>
+ 2 #include <fstream>
+ 3 #include <string>
+ 4 #include "addressbook.pb.h"
+ 5 
+ 6 using namespace std;
+ 7 
+ 8 void ListPeople(const tutorial::AddressBook& address_book) {
+ 9     for (int i = 0; i < address_book.persion_size(); i++) {
+10         const tutorial::Persion& persion = address_book.persion(i);
+11 
+12         cout << persion.name() << " " << persion.age() << endl;
+13     }
+14 }
+15 
+16 int main(int argc, char **argv) {
+17     //GOOGLE_PROTOBUF_VERIFY_VERSION;
+18 
+19     if (argc != 2) {
+20         cerr << "Usage: " << argv[0] << " ADDRESS_BOOL_FILE" << endl;
+21         return -1;
+22     }
+23 
+24     tutorial::AddressBook address_book;
+25 
+26     {
+27         fstream input(argv[1], ios::in | ios::binary);
+28         if (!address_book.ParseFromIstream(&input)) {
+29             cerr << "Filed to parse address book." << endl;
+30             return -1;
+31         }
+32         input.close();
+33     }
+34 
+35     ListPeople(address_book);
+36 
+37     // Optional: Delete all global objects allocated by libprotobuf.
+38     //google::protobuf::ShutdownProtobufLibrary();
+39 
+40     return 0;
+41 }
+复制代码
+ 　　编译read.cpp文件，g++ addressbook.pb.cc read.cpp -o read `pkg-config --cflags --libs protobuf`
+ 
+ 。。。。。。。。。。。。。。。。。
+ protobuf C++使用实例
+栏目: 服务器 · 发布时间: 2年前
+
+来源: www.52murong.com
+
+
+ 
+内容简介：由于项目中使用protobuf，因此本文学习总结protobuf-C++的基本使用，试验环境为centos7-x64.什么是 Google Protocol Buffer？ 假如您在网上搜索，应该会得到类似这样的文字介绍：Google Protocol Buffer( 简称 Protobuf) 是 Google 公司内部的混合语言数据标准，目前已经正在使用的有超过 48,162 种报文格式定义和超过 12,183 个 .proto 文件。他们用于 RPC 系统和持续数据存储系统。
+本文转载自：http://www.52murong.com/post/protobuf-example，本站转载出于传递更多信息之目的，版权归原作者或者来源机构所有。
+由于项目中使用protobuf，因此本文学习总结protobuf-C++的基本使用，试验环境为centos7-x64.
+
+protobuf简介
+什么是 Google Protocol Buffer？ 假如您在网上搜索，应该会得到类似这样的文字介绍：
+
+Google Protocol Buffer( 简称 Protobuf) 是 Google 公司内部的混合语言数据标准，目前已经正在使用的有超过 48,162 种报文格式定义和超过 12,183 个 .proto 文件。他们用于 RPC 系统和持续数据存储系统。
+
+
+ 
+Protocol Buffers 是一种轻便高效的结构化数据存储格式，可以用于结构化数据串行化，或者说序列化。它很适合做数据存储或 RPC 数据交换格式。可用于通讯协议、数据存储等领域的语言无关、平台无关、可扩展的序列化结构数据格式。目前提供了 C++、 Java 、 Python 三种语言的 API。
+
+protobuf安装
+protobuf clone或者下载后，执行：
+
+./autogen.sh
+
+./configure --prefix=/usr/local/protobuf
+
+make
+
+make check
+
+make install
+
+以下命令需要root权限，如不是root登录需要sudo
+
+vim /etc/profile
+
+添加
+
+export PATH=$PATH:/usr/local/protobuf/bin/
+
+export PKG_CONFIG_PATH=/usr/local/protobuf/lib/pkgconfig/
+
+保存执行
+
+source /etc/profile
+
+当然也可以直接执行两次export语句。
+
+此时我们执行protoc --version就可以看到protobuf的版本信息：
+
+[root@centos-linux-7 protobuf]# protoc --version
+
+libprotoc 3.6.0
+
+如果提示命令protoc不存在，则在~/.profile中添加上面两行代码。
+配置动态链接库路径
+
+vi /etc/ld.so.conf
+
+插入：
+
+/usr/local/protobuf/lib
+
+执行：
+
+ldconfig
+为什么要使用protobuf
+假如我们要实现write将把一个结构化数据写入磁盘，以便其他人来读取。如果我们不使用 Protobuf，一个可能的方法是将数据转换为字符串，然后将字符串写入磁盘。转换为字符串的方法可以使用 sprintf()，这非常简单。数字 123 可以变成字符串”123”。
+
+这样做似乎没有什么不妥，但是仔细考虑一下就会发现，这样的做法对写 read 的那个人的要求比较高。比如”123”可以是单个数字 123，但也可以是三个数字 1,2 和 3，等等。这么说来，我们还必须让 write 定义一种分隔符一样的字符，以便 read可以正确读取。但分隔符也许还会引起其他的什么问题。最后我们发现一个简单的 Helloworld 也需要写许多处理消息格式的代码。
+
+如果使用 Protobuf，那么这些细节就可以不需要应用程序来考虑了。
+
+使用 Protobuf，write的工作很简单，需要处理的结构化数据由 .proto 文件描述，并定义在 lm.helloworld.pb.h 中。对于本例，类名为 lm::helloworld。Writer 需要 include 该头文件，然后便可以使用这个类了。
+
+当我们需要将该结构化数据保存到磁盘上时，类 lm::helloworld 已经提供相应的方法来把一个复杂的数据变成一个字节序列，我们可以将这个字节序列写入磁盘。
+
+
+ 
+对于想要读取这个数据的程序来说，也只需要使用类 lm::helloworld 的相应反序列化方法来将这个字节序列重新转换会结构化数据。这同我们开始时那个“123”的想法类似，不过 Protobuf 想的远远比我们那个粗糙的字符串转换要全面，因此，我们不如放心将这类事情交给 Protobuf 吧。
+
+msg.proto
+
+syntax="proto3";
+package lm; 
+message helloworld 
+{ 
+    int32     id = 1;  // ID   
+    string    str = 2;  // str  
+    int32     opt = 3;  //optional field 
+}
+写好 proto 文件之后就可以用 Protobuf 编译器将该文件编译成目标语言了。本例中我们将使用 C++。
+
+使用如下命令可以生成我们所需要的.cc与.h
+
+protoc --cpp_out=. ./msg.proto
+
+执行上述命令将生成msg.pb.cc与msg.pb.h,执行时需要在文件msg.proto所在的目录下执行。
+
+write.cc
+#include "msg.pb.h"
+#include <fstream>
+#include <iostream>
+using namespace std;
+ 
+int main(void) 
+{ 
+ 
+    lm::helloworld msg1; 
+    msg1.set_id(101); 
+    msg1.set_str("hello"); 
+    fstream output("./log", ios::out | ios::trunc | ios::binary); 
+ 
+    if (!msg1.SerializeToOstream(&output)) { 
+        cerr << "Failed to write msg." << endl; 
+        return -1; 
+    }        
+    return 0; 
+}
+Msg1 是一个 helloworld 类的对象，set_id() 用来设置 id 的值。SerializeToOstream 将对象序列化后写入一个 fstream 流。
+
+read.cc
+
+#include "msg.pb.h"
+#include <fstream>
+#include <iostream>
+using namespace std;
+ 
+void ListMsg(const lm::helloworld & msg) {  
+    cout << msg.id() << endl; 
+    cout << msg.str() << endl; 
+} 
+ 
+int main(int argc, char* argv[]) { 
+ 
+    lm::helloworld msg1; 
+ 
+    { 
+        fstream input("./log", ios::in | ios::binary); 
+        if (!msg1.ParseFromIstream(&input)) { 
+            cerr << "Failed to parse address book." << endl; 
+            return -1; 
+        }       
+    } 
+ 
+    ListMsg(msg1); 
+}
+对应的Makefile:
+
+all: write read
+ 
+clean:
+    @rm -f write read msg.*.cc msg.*.h *.o  log
+ 
+write: msg.pb.cc write.cc
+    g++ -std=c++11  msg.pb.cc write.cc -o write  `pkg-config --cflags --libs protobuf`
+ 
+read: msg.pb.cc read.cc
+    g++ -std=c++11  msg.pb.cc read.cc -o read  `pkg-config --cflags --libs protobuf`
+
+msg.pb.cc msg.pb.h :msg.proto
+    protoc --cpp_out=. ./msg.proto
+执行make之后，生成可执行文件write 和read.
+
+执行结果：
+
+[root@centos-linux-7 protobuf]# make
+
+make: 对“all”无需做任何事。
+
+[root@centos-linux-7 protobuf]# ./write
+
+[root@centos-linux-7 protobuf]# ./read
+
+101
+
+hello
+常见错误及处理:
+
+1.error: #error This file requires compiler and library support for the ISO C++ 2011 standard. This support is currently experimental, and must be enabled with the -std=c++11 or -std=gnu++11 compiler options.
+
+#error This file requires compiler and library support for the
+
+这个错误出现的话需要在Makefile中指定=std=c++11
+
+更多C++的例子可以参考官方文档： protobuf cpptutorial
